@@ -1,0 +1,43 @@
+{
+    "name": "Smart Dashboard",
+    "short_name": "SmartDash",
+    "description": "Умный трекер задач с геймификацией",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#69A1AC",
+    "orientation": "portrait",
+    "categories": ["productivity", "lifestyle", "education"],
+    "lang": "ru",
+    "dir": "ltr",
+    "icons": [
+        {
+            "src": "/public/192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/public/512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Новая задача",
+            "short_name": "Задача",
+            "description": "Создать новую задачу",
+            "url": "/?action=new-task",
+            "icons": [{ "src": "/public/192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "Мой прогресс",
+            "short_name": "Прогресс",
+            "description": "Посмотреть статистику",
+            "url": "/?tab=progress",
+            "icons": [{ "src": "/public/192.png", "sizes": "192x192" }]
+        }
+    ]
+}

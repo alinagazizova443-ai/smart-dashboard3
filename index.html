@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Smart Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Хедер -->
+        <header class="header">
+            <h1 class="app-title">SMART DASHBOARD</h1>
+            <div class="header-actions">
+                <button class="settings-icon" onclick="switchTab('settings', event)">⚙️</button>
+                <div class="avatar-header" id="header-avatar" onclick="switchTab('profile', event)">
+                    <span id="header-avatar-letter">U</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Панель вкладок (стикеры) -->
+        <div class="sticker-nav">
+            <div class="sticker-btn tasks-sticker active" onclick="switchTab('tasks', event)">
+                <span>TASKS</span>
+            </div>
+            <div class="sticker-btn notes-sticker" onclick="switchTab('notes', event)">
+                <span>NOTES</span>
+            </div>
+            <div class="sticker-btn progress-sticker" onclick="switchTab('progress', event)">
+                <span>PROGRESS</span>
+            </div>
+        </div>
+
+        <div class="app-content" id="app-content">
+            <!-- Вкладка Задачи (главная) -->
+            <div class="tab active" id="tasks-tab">
+                <!-- Дата и кнопка добавления -->
+                <div class="tasks-header">
+                    <div class="date-display" id="tasks-date-display"></div>
+                    <button class="add-task-btn" onclick="openTaskModal()">+</button>
+                </div>
+
+                <!-- Календарь для выбора даты задач -->
+                <div class="task-calendar">
+                    <input type="date" id="task-date-filter" class="task-date-input" onchange="filterTasksByDate()">
+                </div>
+
+                <!-- Доска задач -->
+                <div class="tasks-board" id="tasks-board">
+                    <!-- Задачи будут загружаться сюда -->
+                </div>
+
+                <!-- Кнопка Добавить задачу -->
+                <button class="add-task-bottom" onclick="openTaskModal()">+ Добавить задачу</button>
+
+                <!-- Маскот -->
+                <div class="mascot-container" id="mascot-tasks">
+                    <img src="/public/mascot-happy.png" alt="Маскот" id="mascot-image">
+                </div>
+            </div>
+
+            <!-- Вкладка Заметки -->
+            <div class="tab" id="notes-tab">
+                <div class="notes-header">
+                    <h2 class="tab-title">Заметки</h2>
+                    <button class="add-note-btn" onclick="openNoteModal()">+</button>
+                </div>
+
+                <div class="notes-list" id="notes-list-notes">
+                    <!-- Заметки -->
+                </div>
+
+                <div class="mascot-container">
+                    <img src="/public/mascot-notes.png" alt="Маскот" id="mascot-notes-image">
+                </div>
+            </div>
+
+            <!-- Вкладка Прогресс -->
+            <div class="tab" id="progress-tab">
+                <h2 class="tab-title">Мой прогресс</h2>
+
+                <!-- Уровень -->
+                <div class="level-section">
+                    <div class="level-icon" id="level-icon">
+                        <img src="/public/1.png" alt="Уровень 1" id="level-image">
+                    </div>
+                    <div class="level-info">
+                        <span class="level-text">Уровень <span id="current-level">1</span></span>
+                        <div class="exp-bar">
+                            <div class="exp-fill" id="exp-fill"></div>
+                        </div>
+                        <span class="exp-text" id="exp-text">0 / 100</span>
+                    </div>
+                </div>
+
+                <!-- Статистика -->
+                <div class="stats-grid-progress">
+                    <div class="stat-card-progress">
+                        <div class="stat-value-progress" id="streak-progress">0</div>
+                        <div class="stat-label-progress">дней подряд</div>
+                    </div>
+                    <div class="stat-card-progress">
+                        <div class="stat-value-progress" id="total-completed-progress">0</div>
+                        <div class="stat-label-progress">выполнено задач</div>
+                    </div>
+                    <div class="stat-card-progress">
+                        <div class="stat-value-progress" id="total-points-progress">0</div>
+                        <div class="stat-label-progress">всего баллов</div>
+                    </div>
+                </div>
+
+                <!-- График за неделю -->
+                <div class="weekly-chart">
+                    <h3>Выполнено задач за неделю</h3>
+                    <canvas id="weekly-chart" width="300" height="150"></canvas>
+                </div>
+
+                <div class="mascot-container">
+                    <img src="/public/mascot-congrats.png" alt="Маскот" id="mascot-progress-image">
+                </div>
+            </div>
+
+            <!-- Вкладка Профиль -->
+            <div class="tab" id="profile-tab">
+                <div class="profile-header">
+                    <div class="profile-avatar" id="profile-avatar" onclick="document.getElementById('avatar-upload').click()">
+                        <span id="profile-avatar-letter">U</span>
+                    </div>
+                    <input type="file" id="avatar-upload" accept="image/*" onchange="handleAvatarUpload(event)" style="display:none">
+                </div>
+
+                <div class="form-group">
+                    <label>Имя пользователя</label>
+                    <input type="text" id="username" placeholder="Введите имя пользователя">
+                </div>
+
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="user-email" placeholder="Email">
+                </div>
+
+                <button onclick="saveProfile()">Сохранить изменения</button>
+            </div>
+
+            <!-- Вкладка Настройки -->
+            <div class="tab" id="settings-tab">
+                <h2 class="tab-title">Настройки</h2>
+
+                <div class="settings-section">
+                    <h3>Тема оформления</h3>
+                    <div class="theme-selector">
+                        <button class="theme-btn light-theme-btn active" onclick="changeTheme('light')">☀️ Светлая</button>
+                        <button class="theme-btn dark-theme-btn" onclick="changeTheme('dark')">🌙 Темная</button>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Выход из аккаунта</h3>
+                    <button class="logout-btn" onclick="logout()">Выйти</button>
+                </div>
+            </div>
+
+            <!-- Вкладка Вход -->
+            <div class="tab" id="login-tab">
+                <h2 class="tab-title">Вход</h2>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="login-email" placeholder="Email">
+                </div>
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <input type="password" id="login-password" placeholder="Пароль">
+                </div>
+                <button onclick="login()">Войти</button>
+                <p class="auth-link" onclick="switchToRegister()">Нет аккаунта? Зарегистрироваться</p>
+            </div>
+
+            <!-- Вкладка Регистрация -->
+            <div class="tab" id="register-tab">
+                <h2 class="tab-title">Регистрация</h2>
+                <div class="form-group">
+                    <label>Имя пользователя</label>
+                    <input type="text" id="reg-username" placeholder="Имя пользователя">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="reg-email" placeholder="Email">
+                </div>
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <input type="password" id="reg-password" placeholder="Пароль">
+                </div>
+                <button onclick="register()">Зарегистрироваться</button>
+                <p class="auth-link" onclick="switchToLogin()">Уже есть аккаунт? Войти</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для добавления/редактирования задачи -->
+    <div class="modal" id="task-modal">
+        <div class="modal-content">
+            <h3 id="task-modal-title">Новая задача</h3>
+            <div class="form-group">
+                <label>Название задачи</label>
+                <input type="text" id="task-name" placeholder="Название">
+            </div>
+            <div class="form-group">
+                <label>Категория</label>
+                <div class="category-buttons">
+                    <button type="button" class="category-btn" data-cat="health" onclick="selectCategory('health')">💪 Здоровье</button>
+                    <button type="button" class="category-btn" data-cat="household" onclick="selectCategory('household')">🏠 Бытовые</button>
+                    <button type="button" class="category-btn active" data-cat="custom" onclick="selectCategory('custom')">📋 Кастомные</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Дата выполнения</label>
+                <input type="date" id="task-date" value="">
+            </div>
+            <div class="form-group">
+                <label>Баллы за выполнение</label>
+                <input type="number" id="task-points" value="1" min="1">
+            </div>
+            <div class="modal-buttons">
+                <button class="cancel-btn" onclick="closeTaskModal()">Отмена</button>
+                <button class="save-btn" onclick="saveTask()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для заметок -->
+    <div class="modal" id="note-modal">
+        <div class="modal-content">
+            <h3 id="note-modal-title">Новая заметка</h3>
+            <div class="form-group">
+                <label>Заголовок</label>
+                <input type="text" id="note-title" placeholder="Заголовок">
+            </div>
+            <div class="form-group">
+                <label>Текст заметки</label>
+                <textarea id="note-content" rows="5" placeholder="Текст заметки..."></textarea>
+            </div>
+            <div class="modal-buttons">
+                <button class="cancel-btn" onclick="closeNoteModal()">Отмена</button>
+                <button class="save-btn" onclick="saveNote()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
