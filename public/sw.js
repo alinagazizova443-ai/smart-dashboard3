@@ -10,6 +10,7 @@ const urlsToCache = [
     '/style.css',
     '/script.js',
     '/manifest.json',
+    '/favicon.ico',
     '/public/192.png',
     '/public/512.png',
     '/public/1080.png',

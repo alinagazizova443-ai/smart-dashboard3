@@ -1,33 +1,33 @@
-// // script.js
-// // Регистрация Service Worker
-// if ('serviceWorker' in navigator) {
-//     window.addEventListener('load', () => {
-//         navigator.serviceWorker.register('/sw.js')
-//             .then(registration => {
-//                 console.log('Service Worker зарегистрирован:', registration);
+// script.js
+// Регистрация Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+                console.log('Service Worker зарегистрирован:', registration);
                 
-//                 // Проверка обновлений
-//                 registration.addEventListener('updatefound', () => {
-//                     const newWorker = registration.installing;
-//                     console.log('Новый Service Worker найден:', newWorker);
+                // Проверка обновлений
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    console.log('Новый Service Worker найден:', newWorker);
                     
-//                     newWorker.addEventListener('statechange', () => {
-//                         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-//                             console.log('Доступна новая версия!');
-//                             // Показать уведомление о обновлении
-//                             if (confirm('Доступна новая версия приложения. Обновить?')) {
-//                                 newWorker.postMessage({ type: 'SKIP_WAITING' });
-//                                 window.location.reload();
-//                             }
-//                         }
-//                     });
-//                 });
-//             })
-//             .catch(error => {
-//                 console.error('Ошибка регистрации Service Worker:', error);
-//             });
-//     });
-// }
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            console.log('Доступна новая версия!');
+                            // Показать уведомление о обновлении
+                            if (confirm('Доступна новая версия приложения. Обновить?')) {
+                                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                window.location.reload();
+                            }
+                        }
+                    });
+                });
+            })
+            .catch(error => {
+                console.error('Ошибка регистрации Service Worker:', error);
+            });
+    });
+}
 
 // Запрос разрешения на уведомления
 async function requestNotificationPermission() {
