@@ -529,6 +529,8 @@ function saveNote() {
     displayNotesList();
 }
 
+// Добавьте или замените функцию displayNotesList() в script.js
+
 function displayNotesList() {
     const container = document.getElementById('notes-list-notes');
     
@@ -537,16 +539,25 @@ function displayNotesList() {
         return;
     }
     
-    container.innerHTML = notes.map(note => `
-        <div class="note-card">
-            <h4>${escapeHtml(note.title)}</h4>
-            <p>${escapeHtml(note.content.substring(0, 100))}${note.content.length > 100 ? '...' : ''}</p>
-            <div class="note-actions">
-                <button onclick="openNoteModal(${note.id})">✏️</button>
-                <button onclick="deleteNote(${note.id})">🗑️</button>
+    container.innerHTML = notes.map(note => {
+        // Обрезаем текст до первой строки и ограничиваем длину
+        let previewText = note.content || '';
+        // Берем первую строку
+        const firstLine = previewText.split('\n')[0];
+        // Обрезаем до 50 символов
+        const truncatedText = firstLine.length > 50 ? firstLine.substring(0, 50) + '...' : firstLine;
+        
+        return `
+            <div class="note-card">
+                <h4>${escapeHtml(note.title)}</h4>
+                <p class="note-preview">${escapeHtml(truncatedText || 'Нет текста')}</p>
+                <div class="note-actions">
+                    <button onclick="openNoteModal(${note.id})">✏️</button>
+                    <button onclick="deleteNote(${note.id})">🗑️</button>
+                </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function deleteNote(id) {
@@ -657,19 +668,48 @@ function checkEveningReminder() {
 }
 
 // ============ ТЕМА ============
+// В script.js найдите функцию changeTheme и обновите её:
+
 function changeTheme(theme) {
     document.body.classList.remove('light-theme', 'dark-theme');
     document.body.classList.add(`${theme}-theme`);
     localStorage.setItem('theme', theme);
     
-    document.querySelectorAll('.theme-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if ((theme === 'light' && btn.classList.contains('light-theme-btn')) ||
-            (theme === 'dark' && btn.classList.contains('dark-theme-btn'))) {
-            btn.classList.add('active');
+    // Обновляем активное состояние кнопок
+    const lightBtn = document.querySelector('.light-theme-btn');
+    const darkBtn = document.querySelector('.dark-theme-btn');
+    
+    if (lightBtn && darkBtn) {
+        if (theme === 'light') {
+            lightBtn.classList.add('active');
+            darkBtn.classList.remove('active');
+        } else {
+            darkBtn.classList.add('active');
+            lightBtn.classList.remove('active');
         }
+    }
+    
+    // Принудительно обновляем цвета элементов
+    document.querySelectorAll('.tab-title, h2, h3, .date-display, .stat-label-progress').forEach(el => {
+        el.style.color = theme === 'dark' ? '#ffffff' : '';
     });
 }
+
+// Добавьте эту функцию для обновления цветов при загрузке
+function updateThemeColors() {
+    const theme = localStorage.getItem('theme') || 'light';
+    if (theme === 'dark') {
+        document.querySelectorAll('.tab-title, h2, h3, .date-display').forEach(el => {
+            el.style.color = '#ffffff';
+        });
+    }
+}
+
+// Вызовите в DOMContentLoaded:
+document.addEventListener('DOMContentLoaded', function() {
+    // ... существующий код ...
+    updateThemeColors();
+});
 
 // ============ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ============
 function getYesterdayDate() {

@@ -25,6 +25,23 @@ body.dark-theme {
     --border-color: #444444;
 }
 
+/* Исправление цветов для темной темы */
+body.dark-theme .tab-title,
+body.dark-theme h2,
+body.dark-theme h3,
+body.dark-theme .date-display,
+body.dark-theme .modal-content h3,
+body.dark-theme .notes-header h2,
+body.dark-theme .tasks-header .date-display,
+body.dark-theme .weekly-chart h3 {
+    color: #ffffff !important;
+}
+
+body.dark-theme .form-group label,
+body.dark-theme .stat-label-progress {
+    color: #cccccc !important;
+}
+
 body {
     background-color: var(--bg-secondary);
     display: flex;
@@ -58,10 +75,10 @@ body {
     font-family: 'Klee One Semibold', 'Klee One', cursive;
     font-size: calc(100vh / 52);
     color: white;
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    white-space: nowrap;
+    margin: 0;
+    /* Убираем absolute позиционирование */
+    position: static;
+    transform: none;
 }
 
 .header-actions {
@@ -141,6 +158,8 @@ body {
 
 /* Контент */
 .app-content {
+    display: flex;
+    flex-direction: column;
     padding: 0 calc(100vh / 18);
     padding-bottom: 20px;
     background-color: var(--bg-primary);
@@ -150,10 +169,14 @@ body {
 .tab {
     display: none;
     animation: fadeIn 0.3s;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .tab.active {
-    display: block;
+    display: flex;
+    flex-direction: column;
 }
 
 @keyframes fadeIn {
@@ -162,6 +185,18 @@ body {
 }
 
 /* Задачи */
+#tasks-tab,
+#notes-tab,
+#progress-tab,
+#profile-tab,
+#settings-tab,
+#login-tab,
+#register-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
 .tasks-header {
     display: flex;
     justify-content: space-between;
@@ -295,13 +330,19 @@ body {
 
 /* Маскот */
 .mascot-container {
+    position: relative;
+    width: 100%;
+    margin-top: auto;
+    padding: 20px 0 0 0;
     text-align: center;
-    margin-top: 20px;
+    background-color: transparent;
 }
 
 .mascot-container img {
     width: 100%;
+    max-width: 100%;
     height: auto;
+    display: block;
 }
 
 /* Заметки */
@@ -329,9 +370,13 @@ body {
 }
 
 .notes-list {
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 12px;
+    margin-bottom: 20px;
+    max-height: 50vh;
+    overflow-y: auto;
 }
 
 .note-card {
@@ -361,6 +406,15 @@ body {
     border: none;
     cursor: pointer;
     font-size: 18px;
+}
+
+.note-preview {
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Прогресс */
@@ -477,6 +531,113 @@ canvas {
 }
 
 /* Настройки */
+/* Исправление цветов для темной темы */
+/* Исправление кнопки Темная тема */
+.theme-btn {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    background-color: var(--bg-secondary);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.light-theme-btn {
+    background-color: #ffffff;
+    color: #333333 !important;
+}
+
+.dark-theme-btn {
+    background-color: #2d2d2d;
+    color: #ffffff !important;
+}
+
+.theme-btn.active {
+    border-color: var(--color3);
+    background-color: var(--color3);
+    color: white !important;
+}
+
+body.dark-theme .tasks-board {
+    background-color: var(--color1);
+}
+
+body.dark-theme .task-item {
+    background-color: #2d2d2d;
+}
+
+body.dark-theme .task-name {
+    color: #ffffff;
+}
+
+body.dark-theme .task-points {
+    color: #aaaaaa;
+}
+
+body.dark-theme .theme-btn.light-theme-btn {
+    background-color: #3d3d3d;
+    color: #e0e0e0 !important;
+}
+
+body.dark-theme .theme-btn.dark-theme-btn {
+    background-color: var(--color3);
+    color: white !important;
+}
+body.dark-theme .task-date-input,
+body.dark-theme input[type="date"] {
+    background-color: #2d2d2d;
+    color: #ffffff;
+    border-color: #555;
+}
+
+/* Исправление для модальных окон */
+body.dark-theme .modal-content {
+    background-color: #2d2d2d;
+}
+
+body.dark-theme .modal-content h3,
+body.dark-theme .modal-content label {
+    color: #ffffff;
+}
+
+body.dark-theme .modal-content input,
+body.dark-theme .modal-content textarea {
+    background-color: #3d3d3d;
+    color: #ffffff;
+    border-color: #555;
+}
+
+/* Исправление для статистики */
+body.dark-theme .stat-card-progress {
+    background-color: #2d2d2d;
+}
+
+body.dark-theme .stat-value-progress {
+    color: var(--color3);
+}
+
+/* Убираем лишний margin у маскота в notes и progress */
+#notes-tab .mascot-container,
+#progress-tab .mascot-container {
+    margin-top: auto;
+}
+
+/* Исправление для заголовков в настройках */
+.settings-section h3 {
+    color: var(--text-primary);
+}
+
+body.dark-theme .settings-section h3 {
+    color: #ffffff;
+}
+
+body.dark-theme .settings-section p {
+    color: #cccccc;
+}
+
 .settings-section {
     margin-bottom: 25px;
     padding-bottom: 15px;
@@ -491,21 +652,6 @@ canvas {
 .theme-selector {
     display: flex;
     gap: 10px;
-}
-
-.theme-btn {
-    flex: 1;
-    padding: 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background-color: var(--bg-secondary);
-    cursor: pointer;
-}
-
-.theme-btn.active {
-    border-color: var(--color3);
-    background-color: var(--color3);
-    color: white;
 }
 
 .logout-btn {
@@ -622,4 +768,44 @@ button {
     margin-top: 15px;
     color: var(--color3);
     cursor: pointer;
+}
+/* Добавьте в конец style.css */
+
+/* Анимация для маскота */
+.mascot-container img {
+    transition: transform 0.3s ease;
+}
+
+.mascot-container img:hover {
+    transform: scale(1.02);
+}
+
+/* Улучшение скролла для списка заметок */
+.notes-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.notes-list::-webkit-scrollbar-track {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.notes-list::-webkit-scrollbar-thumb {
+    background: var(--color3);
+    border-radius: 4px;
+}
+
+/* Исправление для кнопок в темной теме */
+body.dark-theme button {
+    color: white;
+}
+
+body.dark-theme .cancel-btn {
+    background-color: #555;
+    color: white;
+}
+
+body.dark-theme .add-task-bottom,
+body.dark-theme .add-note-btn {
+    background-color: var(--color3);
 }
