@@ -212,33 +212,84 @@ function loadUserData() {
 
 // ============ НАВИГАЦИЯ ============
 function switchTab(tabName, event) {
+    // Скрываем ВСЕ вкладки
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+        // Дополнительно скрываем через style
+        tab.style.display = 'none';
+    });
+    
+    // Показываем выбранную вкладку
+    const activeTab = document.getElementById(`${tabName}-tab`);
+    if (activeTab) {
+        activeTab.classList.add('active');
+        activeTab.style.display = '';
+    }
+    
+    // Обновляем активный пункт навигации (для стикеров)
     if (event && event.currentTarget) {
         document.querySelectorAll('.sticker-btn').forEach(btn => {
             btn.classList.remove('active');
         });
         event.currentTarget.classList.add('active');
+    } else if (event && event.target) {
+        document.querySelectorAll('.sticker-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        if (event.target.closest('.sticker-btn')) {
+            event.target.closest('.sticker-btn').classList.add('active');
+        }
     }
-    showTab(tabName);
+    
+    // Обновляем маскота для вкладки
     updateMascotForTab(tabName);
+    
+    // Обновляем данные при переключении
+    if (tabName === 'tasks') {
+        if (typeof filterTasksByDate === 'function') filterTasksByDate();
+        if (typeof checkOverdueTasks === 'function') checkOverdueTasks();
+    } else if (tabName === 'notes') {
+        if (typeof displayNotesList === 'function') displayNotesList();
+    } else if (tabName === 'progress') {
+        if (typeof updateProgressTab === 'function') updateProgressTab();
+    } else if (tabName === 'profile') {
+        if (currentUser) {
+            document.getElementById('username').value = currentUser.username || '';
+            document.getElementById('user-email').value = currentUser.email || '';
+        }
+    }
 }
 
+// Добавьте эту функцию, если её нет
 function showTab(tabName) {
-    document.querySelectorAll('.tab').forEach(tab => {
+    // Скрываем все вкладки
+    const tabs = document.querySelectorAll('.tab');
+    tabs.forEach(tab => {
         tab.classList.remove('active');
+        tab.style.display = 'none';
     });
-    document.getElementById(`${tabName}-tab`).classList.add('active');
     
-    if (tabName === 'tasks') {
-        filterTasksByDate();
-        checkOverdueTasks();
-    } else if (tabName === 'notes') {
-        displayNotesList();
-    } else if (tabName === 'progress') {
-        updateProgressTab();
-    } else if (tabName === 'profile' && currentUser) {
-        document.getElementById('username').value = currentUser.username || '';
-        document.getElementById('user-email').value = currentUser.email || '';
+    // Показываем нужную
+    const activeTab = document.getElementById(`${tabName}-tab`);
+    if (activeTab) {
+        activeTab.classList.add('active');
+        activeTab.style.display = '';
     }
+    
+    // Обновляем активный стикер
+    const stickerMap = {
+        'tasks': 0,
+        'notes': 1,
+        'progress': 2
+    };
+    
+    const stickers = document.querySelectorAll('.sticker-btn');
+    stickers.forEach((sticker, index) => {
+        sticker.classList.remove('active');
+        if (stickerMap[tabName] === index) {
+            sticker.classList.add('active');
+        }
+    });
 }
 
 function updateHeaderAvatar() {

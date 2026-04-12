@@ -120,18 +120,19 @@ body {
 .sticker-nav {
     display: flex;
     justify-content: space-between;
-    gap: calc(100vw / 71.6);
+    gap: calc(100vw / 50);
     background-color: var(--bg-primary);
+    padding: 0 calc(100vh / 18);
 }
 
 .sticker-btn {
     width: calc(100vw / 3);
-    height: calc(100vw / 15.5);
+    height: calc(100vw / 7);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: calc(100vw / 52);
+    font-size: calc(100vw / 25);
     font-weight: bold;
     border-radius: 0 0 calc(100vw / 43) calc(100vw / 43);
     transition: transform 0.2s;
@@ -161,22 +162,17 @@ body {
     display: flex;
     flex-direction: column;
     padding: 0 calc(100vh / 18);
-    padding-bottom: 20px;
     background-color: var(--bg-primary);
     min-height: calc(100vh - 7vh - 60px);
 }
 
 .tab {
-    display: none;
+    display: none !important;
     animation: fadeIn 0.3s;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
 }
 
 .tab.active {
-    display: flex;
-    flex-direction: column;
+    display: block !important;
 }
 
 @keyframes fadeIn {
