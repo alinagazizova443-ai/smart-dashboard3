@@ -12,7 +12,7 @@ const urlsToCache = [
 
 // Опциональные файлы (если существуют)
 const optionalUrls = [
-    '/manifest.json',
+    '/public/manifest.json',
     '/favicon.ico',
     '/public/192.png',
     '/public/512.png'
