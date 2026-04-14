@@ -360,9 +360,10 @@ body {
     border-radius: 50%;
     background-color: var(--color2);
     color: white;
-    font-size: 24px;
+    font-size: calc(100vw/14.4);
     border: none;
     cursor: pointer;
+    padding: 0;
 }
 
 .notes-list {
@@ -425,8 +426,8 @@ body {
 }
 
 .level-icon img {
-    width: 70px;
-    height: 70px;
+    width: calc(100vw/3.25);
+    height: calc(100vh/12);
 }
 
 .level-info {
@@ -699,6 +700,7 @@ body.dark-theme .settings-section p {
     background-color: var(--bg-secondary);
     cursor: pointer;
     width: auto;
+    color: black;
 }
 
 .category-btn.active {
