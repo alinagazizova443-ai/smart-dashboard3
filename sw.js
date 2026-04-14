@@ -76,31 +76,19 @@ self.addEventListener('activate', event => {
 
 // Обработка fetch-запросов
 self.addEventListener('fetch', event => {
+    if (event.request.method !== 'GET') {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+    
     event.respondWith(
         caches.match(event.request)
-            .then(response => {
-                if (response) {
-                    return response;
-                }
-                return fetch(event.request)
-                    .then(networkResponse => {
-                        // Кэшируем только успешные ответы
-                        if (networkResponse && networkResponse.status === 200) {
-                            const responseToCache = networkResponse.clone();
-                            caches.open(STATIC_CACHE)
-                                .then(cache => {
-                                    cache.put(event.request, responseToCache);
-                                });
-                        }
-                        return networkResponse;
-                    });
-            })
+            .then(response => response || fetch(event.request))
             .catch(() => {
-                // Офлайн режим
                 if (event.request.mode === 'navigate') {
                     return caches.match('/index.html');
                 }
-                return new Response('Офлайн режим', { status: 503 });
+                return new Response('Offline', { status: 503 });
             })
     );
 });

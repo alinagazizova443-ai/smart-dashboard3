@@ -1,8 +1,70 @@
-// ============ SUPABASE ============
-const SUPABASE_URL = 'https://bejonrlrnurzfjbhhrdm.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_sI-5JZx_kfCnvHYscYohhg_9eJ4fKmj';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// script.js
+// Регистрация Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+                console.log('Service Worker зарегистрирован:', registration);
+                
+                // Проверка обновлений
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    console.log('Новый Service Worker найден:', newWorker);
+                    
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            console.log('Доступна новая версия!');
+                            // Показать уведомление о обновлении
+                            if (confirm('Доступна новая версия приложения. Обновить?')) {
+                                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                window.location.reload();
+                            }
+                        }
+                    });
+                });
+            })
+            .catch(error => {
+                console.error('Ошибка регистрации Service Worker:', error);
+            });
+    });
+}
 
+// Запрос разрешения на уведомления
+async function requestNotificationPermission() {
+    if ('Notification' in window) {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            console.log('Разрешение на уведомления получено');
+        }
+    }
+}
+
+// Отправка напоминания о задачах
+function sendTaskReminder() {
+    if (Notification.permission === 'granted') {
+        const todayTasks = tasks.filter(t => t.date === new Date().toISOString().split('T')[0] && !t.completed);
+        if (todayTasks.length > 0) {
+            navigator.serviceWorker.ready.then(registration => {
+                registration.showNotification('Напоминание о задачах', {
+                    body: `У вас осталось ${todayTasks.length} невыполненных задач на сегодня`,
+                    icon: '/public/192.png',
+                    badge: '/public/192.png',
+                    tag: 'task-reminder',
+                    requireInteraction: true
+                });
+            });
+        }
+    }
+}
+
+// Проверять задачи каждый час
+setInterval(() => {
+    const now = new Date();
+    if (now.getHours() === 20) { // В 8 вечера
+        sendTaskReminder();
+    }
+}, 3600000); // Каждый час
+// ============ ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ============
 let currentUser = null;
 let tasks = [];
 let notes = [];
@@ -21,209 +83,117 @@ let selectedCategory = 'custom';
 let editingTaskId = null;
 let editingNoteId = null;
 
+// Уровни (фиксированное количество баллов для перехода)
 const levelExpNeeded = {
     1: 100, 2: 250, 3: 450, 4: 700, 5: 1000,
     6: 1350, 7: 1750, 8: 2200, 9: 2700, 10: 3300
 };
 
-// ============ Service Worker (без изменений) ============
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                console.log('Service Worker зарегистрирован:', registration);
-                registration.addEventListener('updatefound', () => {
-                    const newWorker = registration.installing;
-                    newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            if (confirm('Доступна новая версия приложения. Обновить?')) {
-                                newWorker.postMessage({ type: 'SKIP_WAITING' });
-                                window.location.reload();
-                            }
-                        }
-                    });
-                });
-            })
-            .catch(error => console.error('Ошибка регистрации Service Worker:', error));
-    });
-}
-
-async function requestNotificationPermission() {
-    if ('Notification' in window) {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') console.log('Разрешение на уведомления получено');
-    }
-}
-
-function sendTaskReminder() {
-    if (Notification.permission === 'granted') {
-        const todayTasks = tasks.filter(t => t.date === new Date().toISOString().split('T')[0] && !t.completed);
-        if (todayTasks.length > 0) {
-            navigator.serviceWorker.ready.then(registration => {
-                registration.showNotification('Напоминание о задачах', {
-                    body: `У вас осталось ${todayTasks.length} невыполненных задач на сегодня`,
-                    icon: '/public/192.png',
-                    badge: '/public/192.png',
-                    tag: 'task-reminder',
-                    requireInteraction: true
-                });
-            });
-        }
-    }
-}
-setInterval(() => {
-    const now = new Date();
-    if (now.getHours() === 20) sendTaskReminder();
-}, 3600000);
-
 // ============ ИНИЦИАЛИЗАЦИЯ ============
-document.addEventListener('DOMContentLoaded', async function() {
-    // Загружаем тему
+document.addEventListener('DOMContentLoaded', function() {
+    loadData();
+    checkAuth();
+    updateHeaderAvatar();
+    document.getElementById('task-date-filter').value = new Date().toISOString().split('T')[0];
+    document.getElementById('task-date').value = new Date().toISOString().split('T')[0];
+    updateTasksDateDisplay();
+    filterTasksByDate();
+    
     const savedTheme = localStorage.getItem('theme') || 'light';
     changeTheme(savedTheme);
-    updateThemeColors();
+});
 
-    // Устанавливаем даты
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('task-date-filter').value = today;
-    document.getElementById('task-date').value = today;
-    updateTasksDateDisplay();
-
-    // Проверяем авторизацию
+function loadData() {
     const savedUser = localStorage.getItem('smart_user');
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
-        // Проверяем, активна ли сессия в Supabase
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-            currentUser = user;
-            saveUserToLocalStorage();
-            showMainApp();
-        } else {
-            showAuthScreen();
-        }
-    } else {
-        showAuthScreen();
     }
-});
-
-// ============ ХРАНЕНИЕ ДАННЫХ ПОЛЬЗОВАТЕЛЯ ============
-function getUserStorageKey() {
-    return `smart_${currentUser.id}_data`;
-}
-
-function loadUserData() {
-    const key = getUserStorageKey();
-    const saved = localStorage.getItem(key);
-    if (saved) {
-        const data = JSON.parse(saved);
-        tasks = data.tasks || [];
-        notes = data.notes || [];
-        userStats = data.userStats || { level: 1, exp: 0, totalPoints: 0, streak: 0, weeklyCompleted: [0,0,0,0,0,0,0] };
-    } else {
-        tasks = [];
-        notes = [];
-        userStats = { level: 1, exp: 0, totalPoints: 0, streak: 0, weeklyCompleted: [0,0,0,0,0,0,0] };
+    
+    const savedTasks = localStorage.getItem('smart_tasks');
+    if (savedTasks) {
+        tasks = JSON.parse(savedTasks);
     }
-    updateAllUI();
-}
-
-function saveUserData() {
-    if (!currentUser) return;
-    const key = getUserStorageKey();
-    const data = { tasks, notes, userStats };
-    localStorage.setItem(key, JSON.stringify(data));
-}
-
-function updateAllUI() {
-    displayNotesList();
-    if (typeof updateHabitsDisplay === 'function') updateHabitsDisplay();
-    updateProgressTab();
-    filterTasksByDate();
-}
-
-// Заглушка для updateHabitsDisplay (если нет привычек)
-function updateHabitsDisplay() {
-    // Если привычек нет, ничего не делаем
-}
-
-// ============ АВТОРИЗАЦИЯ ============
-async function register() {
-    const email = document.getElementById('reg-email').value;
-    const password = document.getElementById('reg-password').value;
-    const username = document.getElementById('reg-username').value;
-    if (!email || !password || !username) {
-        alert('Заполните все поля');
-        return;
+    
+    const savedNotes = localStorage.getItem('smart_notes');
+    if (savedNotes) {
+        notes = JSON.parse(savedNotes);
     }
-    const { data, error } = await supabase.auth.signUp({
-        email, password,
-        options: { data: { username } }
-    });
-    if (error) {
-        alert('Ошибка: ' + error.message);
-    } else {
-        currentUser = data.user;
-        saveUserToLocalStorage();
-        showMainApp();
-        alert('Регистрация успешна! Добро пожаловать.');
+    
+    const savedStats = localStorage.getItem('smart_stats');
+    if (savedStats) {
+        userStats = JSON.parse(savedStats);
     }
 }
 
-async function login() {
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
-    if (!email || !password) {
-        alert('Введите email и пароль');
-        return;
-    }
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-        alert('Ошибка входа: ' + error.message);
-    } else {
-        currentUser = data.user;
-        saveUserToLocalStorage();
-        showMainApp();
-        alert('Добро пожаловать!');
-    }
-}
-
-async function logout() {
-    await supabase.auth.signOut();
-    currentUser = null;
-    localStorage.removeItem('smart_user');
-    tasks = [];
-    notes = [];
-    userStats = { level: 1, exp: 0, totalPoints: 0, streak: 0, weeklyCompleted: [0,0,0,0,0,0,0] };
-    showAuthScreen();
-}
-
-function saveUserToLocalStorage() {
+function saveAllData() {
     if (currentUser) {
         localStorage.setItem('smart_user', JSON.stringify(currentUser));
     }
+    localStorage.setItem('smart_tasks', JSON.stringify(tasks));
+    localStorage.setItem('smart_notes', JSON.stringify(notes));
+    localStorage.setItem('smart_stats', JSON.stringify(userStats));
 }
 
-function showAuthScreen() {
-    document.querySelector('.sticker-nav').style.display = 'none';
-    document.querySelector('.header').style.display = 'none';
-    document.getElementById('login-tab').style.display = 'block';
-    document.getElementById('register-tab').style.display = 'block';
-    document.getElementById('tasks-tab').style.display = 'none';
-    document.getElementById('notes-tab').style.display = 'none';
-    document.getElementById('progress-tab').style.display = 'none';
-    document.getElementById('profile-tab').style.display = 'none';
-    document.getElementById('settings-tab').style.display = 'none';
+// ============ АВТОРИЗАЦИЯ ============
+function checkAuth() {
+    if (currentUser) {
+        showTab('tasks');
+        document.querySelector('.sticker-nav').style.display = 'flex';
+        document.querySelector('.header').style.display = 'flex';
+    } else {
+        showTab('login');
+        document.querySelector('.sticker-nav').style.display = 'none';
+        document.querySelector('.header').style.display = 'none';
+    }
 }
 
-function showMainApp() {
-    document.querySelector('.sticker-nav').style.display = 'flex';
-    document.querySelector('.header').style.display = 'flex';
-    document.getElementById('login-tab').style.display = 'none';
-    document.getElementById('register-tab').style.display = 'none';
-    // Показываем вкладку задач
-    switchTab('tasks', null);
-    loadUserData();
+function login() {
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    
+    const users = JSON.parse(localStorage.getItem('smart_users') || '[]');
+    const user = users.find(u => u.email === email && u.password === password);
+    
+    if (user) {
+        currentUser = user;
+        saveAllData();
+        checkAuth();
+        updateHeaderAvatar();
+        loadUserData();
+    } else {
+        alert('Неверный email или пароль');
+    }
+}
+
+function register() {
+    const username = document.getElementById('reg-username').value;
+    const email = document.getElementById('reg-email').value;
+    const password = document.getElementById('reg-password').value;
+    
+    if (!username || !email || !password) {
+        alert('Заполните все поля');
+        return;
+    }
+    
+    const users = JSON.parse(localStorage.getItem('smart_users') || '[]');
+    if (users.find(u => u.email === email)) {
+        alert('Пользователь с таким email уже существует');
+        return;
+    }
+    
+    const newUser = { id: Date.now(), username, email, password, avatar: null };
+    users.push(newUser);
+    localStorage.setItem('smart_users', JSON.stringify(users));
+    currentUser = newUser;
+    saveAllData();
+    checkAuth();
+    updateHeaderAvatar();
+}
+
+function logout() {
+    currentUser = null;
+    saveAllData();
+    checkAuth();
 }
 
 function switchToRegister() {
@@ -234,80 +204,111 @@ function switchToLogin() {
     showTab('login');
 }
 
+function loadUserData() {
+    displayNotesList();
+    updateProgressTab();
+    checkMascotReaction();
+}
+
 // ============ НАВИГАЦИЯ ============
 function switchTab(tabName, event) {
-    // Скрываем все вкладки
+    // Скрываем ВСЕ вкладки
     document.querySelectorAll('.tab').forEach(tab => {
         tab.classList.remove('active');
+        // Дополнительно скрываем через style
         tab.style.display = 'none';
     });
+    
+    // Показываем выбранную вкладку
     const activeTab = document.getElementById(`${tabName}-tab`);
     if (activeTab) {
         activeTab.classList.add('active');
         activeTab.style.display = '';
     }
-    // Обновляем активный стикер
+    
+    // Обновляем активный пункт навигации (для стикеров)
     if (event && event.currentTarget) {
-        document.querySelectorAll('.sticker-btn').forEach(btn => btn.classList.remove('active'));
-        event.currentTarget.classList.add('active');
-    } else {
-        // Если event нет, пытаемся найти стикер по имени вкладки
-        const stickerMap = { tasks: 0, notes: 1, progress: 2 };
-        const stickers = document.querySelectorAll('.sticker-btn');
-        stickers.forEach((sticker, idx) => {
-            if (stickerMap[tabName] === idx) sticker.classList.add('active');
-            else sticker.classList.remove('active');
+        document.querySelectorAll('.sticker-btn').forEach(btn => {
+            btn.classList.remove('active');
         });
+        event.currentTarget.classList.add('active');
+    } else if (event && event.target) {
+        document.querySelectorAll('.sticker-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        if (event.target.closest('.sticker-btn')) {
+            event.target.closest('.sticker-btn').classList.add('active');
+        }
     }
+    
+    // Обновляем маскота для вкладки
     updateMascotForTab(tabName);
+    
+    // Обновляем данные при переключении
     if (tabName === 'tasks') {
-        filterTasksByDate();
-        checkOverdueTasks();
+        if (typeof filterTasksByDate === 'function') filterTasksByDate();
+        if (typeof checkOverdueTasks === 'function') checkOverdueTasks();
     } else if (tabName === 'notes') {
-        displayNotesList();
+        if (typeof displayNotesList === 'function') displayNotesList();
     } else if (tabName === 'progress') {
-        updateProgressTab();
+        if (typeof updateProgressTab === 'function') updateProgressTab();
     } else if (tabName === 'profile') {
         if (currentUser) {
-            document.getElementById('username').value = currentUser.user_metadata?.username || '';
+            document.getElementById('username').value = currentUser.username || '';
             document.getElementById('user-email').value = currentUser.email || '';
         }
     }
 }
 
+// Добавьте эту функцию, если её нет
 function showTab(tabName) {
-    document.querySelectorAll('.tab').forEach(tab => {
+    // Скрываем все вкладки
+    const tabs = document.querySelectorAll('.tab');
+    tabs.forEach(tab => {
         tab.classList.remove('active');
         tab.style.display = 'none';
     });
+    
+    // Показываем нужную
     const activeTab = document.getElementById(`${tabName}-tab`);
     if (activeTab) {
         activeTab.classList.add('active');
         activeTab.style.display = '';
     }
+    
+    // Обновляем активный стикер
+    const stickerMap = {
+        'tasks': 0,
+        'notes': 1,
+        'progress': 2
+    };
+    
+    const stickers = document.querySelectorAll('.sticker-btn');
+    stickers.forEach((sticker, index) => {
+        sticker.classList.remove('active');
+        if (stickerMap[tabName] === index) {
+            sticker.classList.add('active');
+        }
+    });
 }
 
 function updateHeaderAvatar() {
     const avatarLetter = document.getElementById('header-avatar-letter');
     const profileAvatarLetter = document.getElementById('profile-avatar-letter');
-    if (currentUser && currentUser.user_metadata?.username) {
-        const letter = currentUser.user_metadata.username.charAt(0).toUpperCase();
-        if (avatarLetter) avatarLetter.textContent = letter;
+    if (currentUser && currentUser.username) {
+        const letter = currentUser.username.charAt(0).toUpperCase();
+        avatarLetter.textContent = letter;
         if (profileAvatarLetter) profileAvatarLetter.textContent = letter;
     }
 }
 
 function saveProfile() {
     if (currentUser) {
-        // Обновляем метаданные пользователя в Supabase (опционально)
-        const newUsername = document.getElementById('username').value;
-        supabase.auth.updateUser({ data: { username: newUsername } }).then(() => {
-            if (currentUser.user_metadata) currentUser.user_metadata.username = newUsername;
-            else currentUser.user_metadata = { username: newUsername };
-            saveUserToLocalStorage();
-            updateHeaderAvatar();
-            alert('Профиль сохранен');
-        }).catch(err => alert('Ошибка: ' + err.message));
+        currentUser.username = document.getElementById('username').value;
+        currentUser.email = document.getElementById('user-email').value;
+        saveAllData();
+        updateHeaderAvatar();
+        alert('Профиль сохранен');
     }
 }
 
@@ -316,30 +317,63 @@ function handleAvatarUpload(event) {
     if (file && currentUser) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            // Сохраняем аватар в localStorage (только локально)
-            const key = getUserStorageKey();
-            const data = JSON.parse(localStorage.getItem(key) || '{}');
-            data.avatar = e.target.result;
-            localStorage.setItem(key, JSON.stringify(data));
-            alert('Аватар обновлен (только локально)');
+            currentUser.avatar = e.target.result;
+            saveAllData();
         };
         reader.readAsDataURL(file);
     }
 }
 
-// ============ ЗАДАЧИ (с сохранением через saveUserData) ============
-function openTaskModal(taskId = null) { /* без изменений */ }
-function closeTaskModal() { /* без изменений */ }
-function selectCategory(category) { /* без изменений */ }
+// ============ ЗАДАЧИ ============
+function openTaskModal(taskId = null) {
+    editingTaskId = taskId;
+    const modal = document.getElementById('task-modal');
+    const title = document.getElementById('task-modal-title');
+    
+    if (taskId) {
+        const task = tasks.find(t => t.id === taskId);
+        if (task) {
+            title.textContent = 'Редактировать задачу';
+            document.getElementById('task-name').value = task.name;
+            document.getElementById('task-date').value = task.date;
+            document.getElementById('task-points').value = task.points;
+            selectCategory(task.category);
+        }
+    } else {
+        title.textContent = 'Новая задача';
+        document.getElementById('task-name').value = '';
+        document.getElementById('task-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('task-points').value = 1;
+        selectCategory('custom');
+    }
+    modal.classList.add('active');
+}
+
+function closeTaskModal() {
+    document.getElementById('task-modal').classList.remove('active');
+    editingTaskId = null;
+}
+
+function selectCategory(category) {
+    selectedCategory = category;
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.cat === category) {
+            btn.classList.add('active');
+        }
+    });
+}
 
 function saveTask() {
     const name = document.getElementById('task-name').value;
     const date = document.getElementById('task-date').value;
     const points = parseInt(document.getElementById('task-points').value) || 1;
+    
     if (!name) {
         alert('Введите название задачи');
         return;
     }
+    
     if (editingTaskId) {
         const index = tasks.findIndex(t => t.id === editingTaskId);
         if (index !== -1) {
@@ -348,59 +382,122 @@ function saveTask() {
         editingTaskId = null;
     } else {
         tasks.push({
-            id: Date.now(), name, category: selectedCategory, date, points,
-            completed: false, completedDate: null
+            id: Date.now(),
+            name,
+            category: selectedCategory,
+            date,
+            points,
+            completed: false,
+            completedDate: null
         });
     }
-    saveUserData();
+    
+    saveAllData();
     closeTaskModal();
     filterTasksByDate();
 }
 
-function filterTasksByDate() { /* без изменений */ }
-function updateTasksDateDisplay() { /* без изменений */ }
-function displayTasks(taskList) { /* без изменений */ }
-function getCategoryIcon(category) { /* без изменений */ }
-function getCategoryName(category) { /* без изменений */ }
+function filterTasksByDate() {
+    const selectedDate = document.getElementById('task-date-filter').value;
+    updateTasksDateDisplay();
+    
+    const filteredTasks = tasks.filter(task => task.date === selectedDate);
+    displayTasks(filteredTasks);
+    checkEveningReminder();
+}
+
+function updateTasksDateDisplay() {
+    const date = new Date(document.getElementById('task-date-filter').value);
+    const options = { day: 'numeric', month: 'long', year: 'numeric' };
+    document.getElementById('tasks-date-display').textContent = date.toLocaleDateString('ru-RU', options);
+}
+
+function displayTasks(taskList) {
+    const board = document.getElementById('tasks-board');
+    
+    if (taskList.length === 0) {
+        board.innerHTML = '<div style="text-align:center;padding:20px;color:#999;">Нет задач на этот день</div>';
+        return;
+    }
+    
+    board.innerHTML = taskList.map(task => `
+        <div class="task-item ${task.completed ? 'completed' : ''}" data-id="${task.id}">
+            <div class="task-checkbox ${task.completed ? 'checked' : ''}" onclick="toggleTaskComplete(${task.id})"></div>
+            <div class="task-info">
+                <div class="task-name">${escapeHtml(task.name)}</div>
+                <span class="task-category ${task.category}">${getCategoryIcon(task.category)} ${getCategoryName(task.category)}</span>
+            </div>
+            <div class="task-points">+${task.points}</div>
+        </div>
+    `).join('');
+}
+
+function getCategoryIcon(category) {
+    const icons = { health: '💪', household: '🏠', custom: '📋' };
+    return icons[category] || '📋';
+}
+
+function getCategoryName(category) {
+    const names = { health: 'Здоровье', household: 'Бытовые', custom: 'Кастомные' };
+    return names[category] || 'Кастомные';
+}
 
 async function toggleTaskComplete(taskId) {
     const task = tasks.find(t => t.id === taskId);
     if (!task || task.completed) return;
+    
     task.completed = true;
     task.completedDate = new Date().toISOString().split('T')[0];
+    
+    // Расчет баллов: 1 * n дней в серии * n-й уровень пользователя
     const streakBonus = Math.max(1, userStats.streak || 1);
     const levelBonus = userStats.level;
     const earnedPoints = task.points * streakBonus * levelBonus;
+    
+    // Обновление статистики
     userStats.totalPoints += earnedPoints;
     userStats.totalCompleted++;
-    const dayOfWeek = new Date().getDay();
-    userStats.weeklyCompleted[dayOfWeek] = (userStats.weeklyCompleted[dayOfWeek] || 0) + 1;
+    userStats.weeklyCompleted[new Date().getDay()] = (userStats.weeklyCompleted[new Date().getDay()] || 0) + 1;
+    
+    // Обновление серии
     const today = new Date().toISOString().split('T')[0];
     if (userStats.lastTaskDate === today) {
-        // ничего
+        // Уже сегодня отмечали
     } else if (userStats.lastTaskDate === getYesterdayDate()) {
         userStats.streak++;
     } else {
         userStats.streak = 1;
     }
     userStats.lastTaskDate = today;
+    
+    // Добавление опыта
     addExperience(earnedPoints);
-    saveUserData();
+    
+    saveAllData();
     filterTasksByDate();
     updateProgressTab();
+    
+    // Маскот поддерживает
     updateMascotImage('happy', 'tasks');
+    
+    // Проверка перехода уровня
     checkLevelUp();
 }
 
 function addExperience(points) {
     userStats.exp += points;
+    
     let leveledUp = false;
     while (userStats.exp >= getExpNeededForLevel(userStats.level + 1)) {
         userStats.level++;
         userStats.exp -= getExpNeededForLevel(userStats.level);
         leveledUp = true;
     }
-    if (leveledUp) showLevelUpCelebration();
+    
+    if (leveledUp) {
+        showLevelUpCelebration();
+    }
+    
     updateExpBar();
 }
 
@@ -422,20 +519,47 @@ function showLevelUpCelebration() {
     updateMascotImage('levelup', 'progress');
 }
 
-function checkLevelUp() { updateExpBar(); }
+function checkLevelUp() {
+    // Проверка при каждом обновлении
+    updateExpBar();
+}
 
-// ============ ЗАМЕТКИ (с сохранением через saveUserData) ============
-function openNoteModal(noteId = null) { /* без изменений */ }
-function closeNoteModal() { /* без изменений */ }
+// ============ ЗАМЕТКИ ============
+function openNoteModal(noteId = null) {
+    editingNoteId = noteId;
+    const modal = document.getElementById('note-modal');
+    const title = document.getElementById('note-modal-title');
+    
+    if (noteId) {
+        const note = notes.find(n => n.id === noteId);
+        if (note) {
+            title.textContent = 'Редактировать заметку';
+            document.getElementById('note-title').value = note.title;
+            document.getElementById('note-content').value = note.content;
+        }
+    } else {
+        title.textContent = 'Новая заметка';
+        document.getElementById('note-title').value = '';
+        document.getElementById('note-content').value = '';
+    }
+    modal.classList.add('active');
+}
+
+function closeNoteModal() {
+    document.getElementById('note-modal').classList.remove('active');
+    editingNoteId = null;
+}
 
 function saveNote() {
     const title = document.getElementById('note-title').value;
     const content = document.getElementById('note-content').value;
     const date = new Date().toISOString().split('T')[0];
+    
     if (!title && !content) {
         alert('Заполните хотя бы одно поле');
         return;
     }
+    
     if (editingNoteId) {
         const index = notes.findIndex(n => n.id === editingNoteId);
         if (index !== -1) {
@@ -443,23 +567,37 @@ function saveNote() {
         }
         editingNoteId = null;
     } else {
-        notes.unshift({ id: Date.now(), title: title || 'Без заголовка', content, date });
+        notes.unshift({
+            id: Date.now(),
+            title: title || 'Без заголовка',
+            content,
+            date
+        });
     }
-    saveUserData();
+    
+    saveAllData();
     closeNoteModal();
     displayNotesList();
 }
 
+// Добавьте или замените функцию displayNotesList() в script.js
+
 function displayNotesList() {
     const container = document.getElementById('notes-list-notes');
+    
     if (notes.length === 0) {
         container.innerHTML = '<div style="text-align:center;padding:20px;color:#999;">Нет заметок</div>';
         return;
     }
+    
     container.innerHTML = notes.map(note => {
+        // Обрезаем текст до первой строки и ограничиваем длину
         let previewText = note.content || '';
+        // Берем первую строку
         const firstLine = previewText.split('\n')[0];
+        // Обрезаем до 50 символов
         const truncatedText = firstLine.length > 50 ? firstLine.substring(0, 50) + '...' : firstLine;
+        
         return `
             <div class="note-card">
                 <h4>${escapeHtml(note.title)}</h4>
@@ -476,7 +614,7 @@ function displayNotesList() {
 function deleteNote(id) {
     if (confirm('Удалить заметку?')) {
         notes = notes.filter(n => n.id !== id);
-        saveUserData();
+        saveAllData();
         displayNotesList();
     }
 }
@@ -493,15 +631,19 @@ function updateProgressTab() {
 function updateWeeklyChart() {
     const canvas = document.getElementById('weekly-chart');
     if (!canvas) return;
+    
     const ctx = canvas.getContext('2d');
     const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     const today = new Date().getDay();
     const data = userStats.weeklyCompleted || [0,0,0,0,0,0,0];
+    
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
+    
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const barWidth = (canvas.width - 40) / 7 - 5;
     const maxValue = Math.max(...data, 1);
+    
     for (let i = 0; i < 7; i++) {
         const height = (data[i] / maxValue) * (canvas.height - 50);
         ctx.fillStyle = i === today - 1 ? '#FF4133' : '#69A1AC';
@@ -534,10 +676,22 @@ function updateMascotImage(type, tab) {
         warning: '/public/mascot-warning.png',
         levelup: '/public/mascot-levelup.png'
     };
+    
     const imgId = tab === 'tasks' ? 'mascot-image' : 
                   tab === 'notes' ? 'mascot-notes-image' : 'mascot-progress-image';
     const img = document.getElementById(imgId);
     if (img) img.src = images[type] || images.happy;
+}
+
+function checkMascotReaction() {
+    const activeTab = document.querySelector('.tab.active').id;
+    if (activeTab === 'tasks-tab') {
+        updateMascotImage('happy', 'tasks');
+    } else if (activeTab === 'notes-tab') {
+        updateMascotImage('notes', 'notes');
+    } else if (activeTab === 'progress-tab') {
+        updateMascotImage('congrats', 'progress');
+    }
 }
 
 function checkOverdueTasks() {
@@ -546,26 +700,36 @@ function checkOverdueTasks() {
     if (overdueTasks.length > 0) {
         updateMascotImage('worried', 'tasks');
         setTimeout(() => {
-            if (document.querySelector('#tasks-tab.active')) updateMascotImage('happy', 'tasks');
+            if (document.querySelector('#tasks-tab.active')) {
+                updateMascotImage('happy', 'tasks');
+            }
         }, 5000);
     }
 }
 
 function checkEveningReminder() {
     const now = new Date();
-    if (now.getHours() >= 23) {
+    const hour = now.getHours();
+    if (hour >= 23) {
         const todayTasks = tasks.filter(t => t.date === now.toISOString().split('T')[0] && !t.completed);
-        if (todayTasks.length > 0) updateMascotImage('warning', 'tasks');
+        if (todayTasks.length > 0) {
+            updateMascotImage('warning', 'tasks');
+        }
     }
 }
 
 // ============ ТЕМА ============
+// В script.js найдите функцию changeTheme и обновите её:
+
 function changeTheme(theme) {
     document.body.classList.remove('light-theme', 'dark-theme');
     document.body.classList.add(`${theme}-theme`);
     localStorage.setItem('theme', theme);
+    
+    // Обновляем активное состояние кнопок
     const lightBtn = document.querySelector('.light-theme-btn');
     const darkBtn = document.querySelector('.dark-theme-btn');
+    
     if (lightBtn && darkBtn) {
         if (theme === 'light') {
             lightBtn.classList.add('active');
@@ -575,11 +739,14 @@ function changeTheme(theme) {
             lightBtn.classList.remove('active');
         }
     }
+    
+    // Принудительно обновляем цвета элементов
     document.querySelectorAll('.tab-title, h2, h3, .date-display, .stat-label-progress').forEach(el => {
         el.style.color = theme === 'dark' ? '#ffffff' : '';
     });
 }
 
+// Добавьте эту функцию для обновления цветов при загрузке
 function updateThemeColors() {
     const theme = localStorage.getItem('theme') || 'light';
     if (theme === 'dark') {
@@ -589,7 +756,13 @@ function updateThemeColors() {
     }
 }
 
-// ============ ВСПОМОГАТЕЛЬНЫЕ ============
+// Вызовите в DOMContentLoaded:
+document.addEventListener('DOMContentLoaded', function() {
+    // ... существующий код ...
+    updateThemeColors();
+});
+
+// ============ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ============
 function getYesterdayDate() {
     const date = new Date();
     date.setDate(date.getDate() - 1);
